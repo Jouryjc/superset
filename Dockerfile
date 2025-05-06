@@ -167,8 +167,8 @@ RUN mkdir -p \
     && touch superset/static/version_info.json
 
 # Install Playwright and optionally setup headless browsers
-ARG INCLUDE_CHROMIUM="true"
-ARG INCLUDE_FIREFOX="false"
+ARG INCLUDE_CHROMIUM="false"
+ARG INCLUDE_FIREFOX="true"
 RUN --mount=type=cache,target=${SUPERSET_HOME}/.cache/uv \
     if [ "$INCLUDE_CHROMIUM" = "true" ] || [ "$INCLUDE_FIREFOX" = "true" ]; then \
         uv pip install playwright && \
@@ -178,6 +178,15 @@ RUN --mount=type=cache,target=${SUPERSET_HOME}/.cache/uv \
     else \
         echo "Skipping browser installation"; \
     fi
+
+    # RUN apt-get update && \
+    # apt-get install --no-install-recommends -y firefox-esr
+
+# ENV GECKODRIVER_VERSION=0.29.0
+# RUN wget -q https://github.com/mozilla/geckodriver/releases/download/v${GECKODRIVER_VERSION}/geckodriver-v${GECKODRIVER_VERSION}-linux64.tar.gz && \
+#     tar -x geckodriver -zf geckodriver-v${GECKODRIVER_VERSION}-linux64.tar.gz -O > /usr/bin/geckodriver && \
+#     chmod 755 /usr/bin/geckodriver && \
+#     rm geckodriver-v${GECKODRIVER_VERSION}-linux64.tar.gz
 
 # Copy required files for Python build
 COPY pyproject.toml setup.py MANIFEST.in README.md ./

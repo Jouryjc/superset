@@ -37,7 +37,7 @@ x-common-build: &common-build
   args:
     DEV_MODE: "true"
     INCLUDE_CHROMIUM: ${INCLUDE_CHROMIUM:-false}
-    INCLUDE_FIREFOX: ${INCLUDE_FIREFOX:-false}
+    INCLUDE_FIREFOX: ${INCLUDE_FIREFOX:-true}
     BUILD_TRANSLATIONS: ${BUILD_TRANSLATIONS:-false}
 
 services:
@@ -77,7 +77,7 @@ services:
     container_name: superset_db
     restart: unless-stopped
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:15432:5432"
     volumes:
       - db_home:/var/lib/postgresql/data
       - ./docker/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d

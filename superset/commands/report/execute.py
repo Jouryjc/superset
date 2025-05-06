@@ -392,6 +392,8 @@ class BaseReportState:
 
         try:
             logger.info("Getting chart from %s as user %s", url, user.username)
+            # 打印url参数
+            logger.info("url: %s", url)
             csv_data = get_chart_csv_data(chart_url=url, auth_cookies=auth_cookies)
         except SoftTimeLimitExceeded as ex:
             raise ReportScheduleCsvTimeout() from ex

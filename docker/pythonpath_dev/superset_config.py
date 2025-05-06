@@ -99,13 +99,40 @@ class CeleryConfig:
 
 CELERY_CONFIG = CeleryConfig
 
-FEATURE_FLAGS = {"ALERT_REPORTS": True}
-ALERT_REPORTS_NOTIFICATION_DRY_RUN = True
-WEBDRIVER_BASEURL = f"http://superset_app{os.environ.get('SUPERSET_APP_ROOT', '/')}/"  # When using docker compose baseurl should be http://superset_nginx{ENV{BASEPATH}}/  # noqa: E501
+FEATURE_FLAGS = {
+    "ALERT_REPORTS": True,
+    "ENABLE_TEMPLATE_PROCESSING": True,
+    "DATE_FORMAT_IN_EMAIL_SUBJECT": True,
+}
+SMTP_HOST="smtp.ewomail.cn"
+SMTP_PORT=25
+SMTP_SSL = False
+SMTP_STARTTLS = False
+SMTP_USER="superset@ewomail.cn"
+SMTP_PASSWORD="Admin@123"
+SMTP_MAIL_FROM="superset@ewomail.cn"
+
+ALERT_REPORTS_NOTIFICATION_DRY_RUN = False
+
+WEBDRIVER_TYPE = "firefox"
+WEBDRIVER_BASEURL = f"http://superset_app:8088{os.environ.get('SUPERSET_APP_ROOT', '/')}/"  # When using docker compose baseurl should be http://superset_nginx{ENV{BASEPATH}}/  # noqa: E501
+
+# 打印WEBDRIVER_BASEURL，打印SUPERSET_APP_ROOT的值
+logger.info(f"SUPERSET_APP_ROOT 配置值: {os.environ.get('SUPERSET_APP_ROOT', '/')}")
+logger.info(f"WEBDRIVER_BASEURL 配置值: {WEBDRIVER_BASEURL}")
+
 # The base URL for the email report hyperlinks.
 WEBDRIVER_BASEURL_USER_FRIENDLY = (
-    f"http://localhost:8888/{os.environ.get('SUPERSET_APP_ROOT', '/')}/"
+    f"http://superset_app:8088/{os.environ.get('SUPERSET_APP_ROOT', '/')}/"
 )
+# 打印WEBDRIVER_BASEURL_USER_FRIENDLY
+logger.info(f"WEBDRIVER_BASEURL_USER_FRIENDLY 配置值: {WEBDRIVER_BASEURL_USER_FRIENDLY}")
+
+from superset.tasks.types import FixedExecutor
+
+ALERT_REPORTS_EXECUTORS = [FixedExecutor("admin")]
+
+
 SQLLAB_CTAS_NO_LIMIT = True
 
 log_level_text = os.getenv("SUPERSET_LOG_LEVEL", "INFO")
