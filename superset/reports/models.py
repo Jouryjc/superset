@@ -228,6 +228,12 @@ class ReportExecutionLog(Model):  # pylint: disable=too-few-public-methods
 
     state = Column(String(50), nullable=False)
     error_message = Column(Text)
+    
+    # 存储报告内容
+    report_content = Column(MediumText())  # 存储JSON格式的报告内容信息
+    screenshot_path = Column(String(1000))  # 截图路径
+    csv_path = Column(String(1000))  # CSV文件路径
+    pdf_path = Column(String(1000))  # PDF文件路径
 
     report_schedule_id = Column(
         Integer, ForeignKey("report_schedule.id"), nullable=False

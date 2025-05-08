@@ -588,3 +588,225 @@ class ReportScheduleRestApi(BaseSupersetModelRestApi):
         except SupersetException as ex:
             logger.error("Error fetching slack channels %s", str(ex))
             return self.response_422(message=str(ex))
+
+    @expose("/<int:pk>/logs", methods=["GET"])
+    @protect()
+    @safe
+    @statsd_metrics
+    @permission_name("get")
+    def get_report_schedule_logs(
+        self, pk: int
+    ) -> Response:
+        """获取报告计划的执行日志
+        ---
+        get:
+          description: >-
+            获取报告计划的执行日志
+          parameters:
+          - in: path
+            name: pk
+            schema:
+              type: integer
+            required: true
+          - in: query
+            name: page
+            schema:
+              type: integer
+          - in: query
+            name: page_size
+            schema:
+              type: integer
+          responses:
+            200:
+              description: 报告计划的执行日志
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      logs:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: integer
+                            scheduled_dttm:
+                              type: string
+                            start_dttm:
+                              type: string
+                            end_dttm:
+                              type: string
+                            state:
+                              type: string
+                            error_message:
+                              type: string
+                            has_content:
+                              type: boolean
+                      count:
+                        type: integer
+            404:
+              $ref: '#/components/responses/404'
+            500:
+              $ref: '#/components/responses/500'
+        """
+        try:
+            page = request.args.get("page", 0, type=int)
+            page_size = request.args.get("page_size", 100, type=int)
+            
+            logs, count = ReportScheduleDAO.get_report_schedule_logs(pk, page, page_size)
+            
+            payload = {
+                "logs": [
+                    {
+                        "id": log.id,
+                        "scheduled_dttm": log.scheduled_dttm.isoformat() if log.scheduled_dttm else None,
+                        "start_dttm": log.start_dttm.isoformat() if log.start_dttm else None,
+                        "end_dttm": log.end_dttm.isoformat() if log.end_dttm else None,
+                        "state": log.state,
+                        "error_message": log.error_message,
+                        "has_content": bool(log.report_content or log.screenshot_path or log.csv_path or log.pdf_path),
+                    }
+                    for log in logs
+                ],
+                "count": count,
+            }
+            
+            return self.response(200, **payload)
+        except ReportScheduleNotFoundError:
+            return self.response_404()
+        except Exception as ex:
+            return self.response_500(message=str(ex))
+
+    @expose("/logs/<int:log_id>/content", methods=["GET"])
+    @protect()
+    @safe
+    @statsd_metrics
+    @permission_name("get")
+    def get_report_log_content(
+        self, log_id: int
+    ) -> Response:
+        """获取报告日志的内容
+        ---
+        get:
+          description: >-
+            获取报告日志的内容
+          parameters:
+          - in: path
+            name: log_id
+            schema:
+              type: integer
+            required: true
+          responses:
+            200:
+              description: 报告日志的内容
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      content:
+                        type: object
+                      screenshot_path:
+                        type: string
+                      csv_path:
+                        type: string
+                      pdf_path:
+                        type: string
+            404:
+              $ref: '#/components/responses/404'
+            500:
+              $ref: '#/components/responses/500'
+        """
+        try:
+            content = ReportScheduleDAO.get_report_content(log_id)
+            if not content:
+                return self.response_404()
+            
+            return self.response(200, **content)
+        except Exception as ex:
+            return self.response_500(message=str(ex))
+
+    @expose("/logs/<int:log_id>/file", methods=["GET"])
+    @protect()
+    @safe
+    @statsd_metrics
+    @permission_name("get")
+    def get_report_log_file(
+        self, log_id: int
+    ) -> Response:
+        """获取报告日志的文件（截图、CSV、PDF）
+        ---
+        get:
+          description: >-
+            获取报告日志的文件
+          parameters:
+          - in: path
+            name: log_id
+            schema:
+              type: integer
+            required: true
+          - in: query
+            name: type
+            schema:
+              type: string
+              enum: [screenshot, csv, pdf]
+            required: true
+          responses:
+            200:
+              description: 报告日志的文件
+              content:
+                image/png:
+                  schema:
+                    type: string
+                    format: binary
+                text/csv:
+                  schema:
+                    type: string
+                    format: binary
+                application/pdf:
+                  schema:
+                    type: string
+                    format: binary
+            404:
+              $ref: '#/components/responses/404'
+            500:
+              $ref: '#/components/responses/500'
+        """
+        try:
+            file_type = request.args.get("type")
+            if not file_type or file_type not in ["screenshot", "csv", "pdf"]:
+                return self.response_400(message="Invalid file type")
+            
+            log = db.session.query(ReportExecutionLog).get(log_id)
+            if not log:
+                return self.response_404()
+            
+            file_path = None
+            content_type = None
+            
+            if file_type == "screenshot" and log.screenshot_path:
+                file_path = log.screenshot_path
+                content_type = "image/png"
+            elif file_type == "csv" and log.csv_path:
+                file_path = log.csv_path
+                content_type = "text/csv"
+            elif file_type == "pdf" and log.pdf_path:
+                file_path = log.pdf_path
+                content_type = "application/pdf"
+            
+            if not file_path or not os.path.exists(file_path):
+                return self.response_404()
+            
+            with open(file_path, "rb") as f:
+                file_content = f.read()
+            
+            response = Response(file_content, content_type=content_type)
+            
+            # 设置文件名
+            filename = os.path.basename(file_path)
+            response.headers["Content-Disposition"] = f'attachment; filename="{filename}"'
+            
+            return response
+        except Exception as ex:
+            return self.response_500(message=str(ex))

@@ -194,6 +194,7 @@ function ExecutionLog({
       />
       <ListView<LogObject>
         className="execution-log-list-view"
+        execution-log-list-view={true}
         columns={columns}
         count={logCount}
         data={logs}

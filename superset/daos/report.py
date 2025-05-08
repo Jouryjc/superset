@@ -291,3 +291,69 @@ class ReportScheduleDAO(BaseDAO[ReportSchedule]):
             )
             .delete(synchronize_session="fetch")
         )
+
+
+@staticmethod
+def get_report_schedule_logs(
+    report_schedule_id: int, page: int = 0, page_size: int = 100
+) -> tuple[list[ReportExecutionLog], int]:
+    """
+    获取报告计划的执行日志，包括历史报告内容
+    
+    :param report_schedule_id: 报告计划ID
+    :param page: 页码，从0开始
+    :param page_size: 每页记录数
+    :return: 日志列表和总记录数
+    """
+    query = (
+        db.session.query(ReportExecutionLog)
+        .filter(ReportExecutionLog.report_schedule_id == report_schedule_id)
+        .order_by(ReportExecutionLog.end_dttm.desc())
+    )
+    
+    # 获取总记录数
+    total_records = query.count()
+    
+    # 分页
+    logs = query.offset(page * page_size).limit(page_size).all()
+    
+    return logs, total_records
+
+@staticmethod
+def get_report_content(log_id: int) -> dict:
+    """
+    获取报告内容
+    
+    :param log_id: 日志ID
+    :return: 报告内容
+    """
+    log = db.session.query(ReportExecutionLog).get(log_id)
+    if not log:
+        return {}
+    
+    result = {
+        'id': log.id,
+        'uuid': str(log.uuid) if log.uuid else None,
+        'scheduled_dttm': log.scheduled_dttm.isoformat() if log.scheduled_dttm else None,
+        'start_dttm': log.start_dttm.isoformat() if log.start_dttm else None,
+        'end_dttm': log.end_dttm.isoformat() if log.end_dttm else None,
+        'state': log.state,
+        'error_message': log.error_message,
+    }
+    
+    # 添加报告内容
+    if log.report_content:
+        try:
+            result['content'] = json.loads(log.report_content)
+        except json.JSONDecodeError:
+            result['content'] = {'error': '无法解析报告内容'}
+    
+    # 添加文件路径
+    if log.screenshot_path:
+        result['screenshot_path'] = log.screenshot_path
+    if log.csv_path:
+        result['csv_path'] = log.csv_path
+    if log.pdf_path:
+        result['pdf_path'] = log.pdf_path
+    
+    return result

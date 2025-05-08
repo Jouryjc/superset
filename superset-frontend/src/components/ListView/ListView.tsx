@@ -26,6 +26,7 @@ import IndeterminateCheckbox from 'src/components/IndeterminateCheckbox';
 import Pagination from 'src/components/Pagination';
 import TableCollection from 'src/components/TableCollection';
 import BulkTagModal from 'src/features/tags/BulkTagModal';
+import ReportHistoryModal from 'src/features/reports/ReportHistoryModal';
 import CardCollection from './CardCollection';
 import FilterControls from './Filters';
 import { CardSortSelect } from './CardSortSelect';
@@ -234,6 +235,8 @@ export interface ListViewProps<T extends object = any> {
   columnsForWrapText?: string[];
   enableBulkTag?: boolean;
   bulkTagResourceName?: string;
+  enableReportHistory?: boolean;
+  isReportView?: boolean;
 }
 
 function ListView<T extends object = any>({
@@ -260,6 +263,8 @@ function ListView<T extends object = any>({
   columnsForWrapText,
   enableBulkTag = false,
   bulkTagResourceName,
+  enableReportHistory = false,
+  isReportView = false,
   addSuccessToast,
   addDangerToast,
 }: ListViewProps<T>) {
@@ -317,6 +322,8 @@ function ListView<T extends object = any>({
 
   const cardViewEnabled = Boolean(renderCard);
   const [showBulkTagModal, setShowBulkTagModal] = useState<boolean>(false);
+  const [showReportHistoryModal, setShowReportHistoryModal] = useState<boolean>(false);
+  const [selectedReportId, setSelectedReportId] = useState<number | null>(null);
 
   useEffect(() => {
     // discard selections if bulk select is disabled
@@ -329,6 +336,11 @@ function ListView<T extends object = any>({
     }
   }, [gotoPage, loading, pageCount, pageIndex]);
 
+  const handleViewReportHistory = (reportId: number) => {
+    setSelectedReportId(reportId);
+    setShowReportHistoryModal(true);
+  };
+
   return (
     <ListViewStyles>
       {allowBulkTagActions && (
@@ -340,6 +352,16 @@ function ListView<T extends object = any>({
           addSuccessToast={addSuccessToast}
           addDangerToast={addDangerToast}
           onHide={() => setShowBulkTagModal(false)}
+        />
+      )}
+      
+      {enableReportHistory && selectedReportId && (
+        <ReportHistoryModal
+          show={showReportHistoryModal}
+          onHide={() => setShowReportHistoryModal(false)}
+          reportId={selectedReportId}
+          addSuccessToast={addSuccessToast}
+          addDangerToast={addDangerToast}
         />
       )}
       <div data-test={className} className={`superset-list-view ${className}`}>
@@ -362,6 +384,21 @@ function ListView<T extends object = any>({
                 onChange={(value: SortColumn[]) => setSortBy(value)}
                 options={cardSortSelectOptions}
               />
+            )}
+            
+            {isReportView && enableReportHistory && (
+              <Button
+                buttonStyle="secondary"
+                onClick={() => {
+                  if (data.length > 0 && (data[0] as { id?: number }).id) {
+                    handleViewReportHistory((data[0] as { id: number }).id);
+                  } else {
+                    addDangerToast(t('没有可用的报告记录'));
+                  }
+                }}
+              >
+                <Icons.ClockCircleOutlined iconSize="m" /> {t('查看历史报告')}
+              </Button>
             )}
           </div>
         </div>
@@ -439,7 +476,22 @@ function ListView<T extends object = any>({
               prepareRow={prepareRow}
               headerGroups={headerGroups}
               rows={rows}
-              columns={columns}
+              columns={enableReportHistory ? [
+                ...columns,
+                {
+                  id: 'report_history',
+                  Header: t('历史'),
+                  Cell: ({ row }: any) => (
+                    <Button
+                      buttonStyle="link"
+                      onClick={() => handleViewReportHistory(row.original.id)}
+                    >
+                      <Icons.ClockCircleOutlined iconSize="m" /> {t('查看历史')}
+                    </Button>
+                  ),
+                  disableSortBy: true,
+                },
+              ] : columns}
               loading={loading}
               highlightRowId={highlightRowId}
               columnsForWrapText={columnsForWrapText}

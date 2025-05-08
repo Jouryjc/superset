@@ -175,7 +175,54 @@ class BaseReportState:
     def create_log(self, error_message: Optional[str] = None) -> None:
         """
         Creates a Report execution log, uses the current computed last_value for Alerts
+        and stores report content for historical viewing
         """
+        # 保存报告内容的路径
+        screenshot_path = None
+        csv_path = None
+        pdf_path = None
+        report_content = None
+        
+        # 如果有报告内容，保存到文件系统
+        if hasattr(self, '_content') and self._content:
+            content_dir = app.config.get('REPORT_CONTENT_STORAGE_DIR', '/tmp/superset_reports')
+            os.makedirs(content_dir, exist_ok=True)
+            
+            # 生成唯一的内容ID
+            content_id = str(self._execution_id)
+            
+            # 保存截图
+            if hasattr(self._content, 'screenshots') and self._content.screenshots:
+                screenshot_dir = os.path.join(content_dir, 'screenshots')
+                os.makedirs(screenshot_dir, exist_ok=True)
+                screenshot_path = os.path.join(screenshot_dir, f"{content_id}.png")
+                with open(screenshot_path, 'wb') as f:
+                    f.write(self._content.screenshots[0])
+            
+            # 保存CSV
+            if hasattr(self._content, 'csv') and self._content.csv:
+                csv_dir = os.path.join(content_dir, 'csv')
+                os.makedirs(csv_dir, exist_ok=True)
+                csv_path = os.path.join(csv_dir, f"{content_id}.csv")
+                with open(csv_path, 'wb') as f:
+                    f.write(self._content.csv)
+            
+            # 保存PDF
+            if hasattr(self._content, 'pdf') and self._content.pdf:
+                pdf_dir = os.path.join(content_dir, 'pdf')
+                os.makedirs(pdf_dir, exist_ok=True)
+                pdf_path = os.path.join(pdf_dir, f"{content_id}.pdf")
+                with open(pdf_path, 'wb') as f:
+                    f.write(self._content.pdf)
+            
+            # 保存报告内容的元数据
+            if hasattr(self._content, 'name') or hasattr(self._content, 'description'):
+                report_content = json.dumps({
+                    'name': getattr(self._content, 'name', ''),
+                    'description': getattr(self._content, 'description', ''),
+                    'url': getattr(self._content, 'url', ''),
+                })
+        
         log = ReportExecutionLog(
             scheduled_dttm=self._scheduled_dttm,
             start_dttm=self._start_dttm,
@@ -186,6 +233,11 @@ class BaseReportState:
             error_message=error_message,
             report_schedule=self._report_schedule,
             uuid=self._execution_id,
+            # 添加报告内容相关字段
+            report_content=report_content,
+            screenshot_path=screenshot_path,
+            csv_path=csv_path,
+            pdf_path=pdf_path,
         )
         db.session.add(log)
         db.session.commit()  # pylint: disable=consider-using-transaction

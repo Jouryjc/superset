@@ -163,3 +163,9 @@ try:
     )
 except ImportError:
     logger.info("Using default Docker config...")
+
+
+# 报告内容存储目录
+REPORT_CONTENT_STORAGE_DIR = '/app/report_content'
+# 报告内容保留天数
+REPORT_CONTENT_RETENTION_DAYS = 30
