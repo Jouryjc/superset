@@ -160,9 +160,9 @@ const DatasetList: FunctionComponent<DatasetListProps> = ({
 
   const [datasetCurrentlyDeleting, setDatasetCurrentlyDeleting] = useState<
     | (Dataset & {
-        charts: any;
-        dashboards: any;
-      })
+      charts: any;
+      dashboards: any;
+    })
     | null
   >(null);
 
@@ -453,8 +453,8 @@ const DatasetList: FunctionComponent<DatasetListProps> = ({
                     allowEdit
                       ? t('Edit')
                       : t(
-                          'You must be a dataset owner in order to edit. Please reach out to a dataset owner to request modifications or edit access.',
-                        )
+                        'You must be a dataset owner in order to edit. Please reach out to a dataset owner to request modifications or edit access.',
+                      )
                   }
                   placement="bottomRight"
                 >
@@ -500,6 +500,7 @@ const DatasetList: FunctionComponent<DatasetListProps> = ({
     [canEdit, canDelete, canExport, openDatasetEditModal, canDuplicate, user],
   );
 
+  const isAdmin = isUserAdmin(user);
   const filterTypes: Filters = useMemo(
     () => [
       {
@@ -560,6 +561,11 @@ const DatasetList: FunctionComponent<DatasetListProps> = ({
         input: 'select',
         operator: FilterOperator.RelationManyMany,
         unfilteredLabel: 'All',
+        // 非Admin用户设置默认值为当前用户
+        initialValue: !isAdmin && user ? {
+          label: `${user.firstName} ${user.lastName}`,
+          value: user.userId,
+        } : undefined,
         fetchSelects: createFetchRelated(
           'dataset',
           'owners',
@@ -572,6 +578,8 @@ const DatasetList: FunctionComponent<DatasetListProps> = ({
           user,
         ),
         paginate: true,
+        // 非Admin用户隐藏此过滤器
+        hidden: !isAdmin,
       },
       {
         Header: t('Certified'),
@@ -778,7 +786,7 @@ const DatasetList: FunctionComponent<DatasetListProps> = ({
                         {t(
                           '... and %s others',
                           datasetCurrentlyDeleting.dashboards.result.length -
-                            10,
+                          10,
                         )}
                       </li>
                     )}

@@ -75,6 +75,7 @@ import { findPermission } from 'src/utils/findPermission';
 import { DashboardCrossLinks } from 'src/components/ListView/DashboardCrossLinks';
 import { ModifiedInfo } from 'src/components/AuditInfo';
 import { QueryObjectColumns } from 'src/views/CRUD/types';
+import { isUserAdmin } from 'src/dashboard/util/permissionUtils';
 
 const FlexRowContainer = styled.div`
   align-items: center;
@@ -569,6 +570,8 @@ function ChartList(props: ChartListProps) {
   );
 
   const filters: Filters = useMemo(() => {
+    const isAdmin = isUserAdmin(props.user);
+    
     const filters_list = [
       {
         Header: t('Name'),
@@ -626,6 +629,7 @@ function ChartList(props: ChartListProps) {
             },
           ]
         : []),
+      // Owner过滤器：Admin用户显示完整功能，非Admin用户隐藏但设置默认值
       {
         Header: t('Owner'),
         key: 'owner',
@@ -633,6 +637,11 @@ function ChartList(props: ChartListProps) {
         input: 'select',
         operator: FilterOperator.RelationManyMany,
         unfilteredLabel: t('All'),
+        // 非Admin用户设置默认值为当前用户
+        initialValue: !isAdmin && props.user ? {
+          label: `${props.user.firstName} ${props.user.lastName}`,
+          value: props.user.userId,
+        } : undefined,
         fetchSelects: createFetchRelated(
           'chart',
           'owners',
@@ -647,6 +656,8 @@ function ChartList(props: ChartListProps) {
           props.user,
         ),
         paginate: true,
+        // 非Admin用户隐藏此过滤器
+        hidden: !isAdmin,
       },
       {
         Header: t('Dashboard'),
@@ -694,7 +705,7 @@ function ChartList(props: ChartListProps) {
       },
     ] as Filters;
     return filters_list;
-  }, [addDangerToast, favoritesFilter, props.user]);
+  }, [addDangerToast, favoritesFilter, props.user, registry, canReadTag, userId]);
 
   const sortTypes = [
     {

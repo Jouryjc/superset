@@ -72,6 +72,7 @@ import { UserWithPermissionsAndRoles } from 'src/types/bootstrapTypes';
 import { findPermission } from 'src/utils/findPermission';
 import { ModifiedInfo } from 'src/components/AuditInfo';
 import { navigateTo } from 'src/utils/navigationUtils';
+import { isUserAdmin } from 'src/dashboard/util/permissionUtils';
 
 const PAGE_SIZE = 25;
 const PASSWORDS_NEEDED_MESSAGE = t(
@@ -526,7 +527,8 @@ function DashboardList(props: DashboardListProps) {
     }),
     [],
   );
-
+  
+  const isAdmin = isUserAdmin(user);
   const filters: Filters = useMemo(() => {
     const filters_list = [
       {
@@ -568,6 +570,11 @@ function DashboardList(props: DashboardListProps) {
         input: 'select',
         operator: FilterOperator.RelationManyMany,
         unfilteredLabel: t('All'),
+        // 非Admin用户设置默认值为当前用户
+        initialValue: !isAdmin && props.user ? {
+          label: `${props.user.firstName} ${props.user.lastName}`,
+          value: props.user.userId,
+        } : undefined,
         fetchSelects: createFetchRelated(
           'dashboard',
           'owners',
@@ -582,6 +589,8 @@ function DashboardList(props: DashboardListProps) {
           props.user,
         ),
         paginate: true,
+        // 非Admin用户隐藏此过滤器
+        hidden: !isAdmin,
       },
       ...(user?.userId ? [favoritesFilter] : []),
       {
